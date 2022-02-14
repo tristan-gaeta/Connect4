@@ -16,34 +16,27 @@ class ComputerPlayer:
     def pick_move(self, rack):
         state = ComputerPlayer.State(rack,self.id)
         ans = self.minimax(state,self.difficulty_level)
-        return ans[1]
+        return ans["src"]
 
     def minimax(self, state, plies):
-        if plies == 0:
+        if plies == 0 or state.value == float("inf") or state.value == float("-inf"):
             if self.id != 1:
                 state.value *= -1
-            return (state.value, None)
+            return {"val":state.value,"depth":self.difficulty_level-plies}
         
-        best = float("-inf") if state.id == self.id else float("inf")
-        src = 0
+        best = {"val":float("-inf"),"depth":float("inf")}
+        sign = 1 if self.id == state.id else -1
         for col in range(state.width):
             child = state.make_move(col)
             if child is not None:
-                optimal_val = self.minimax(child,plies-1)[0]
-                if self.id == state.id:
-                    if (optimal_val > best):
-                        best = optimal_val
-                        src = col
-                        if best == float("inf"):
-                            break
-                else:
-                    if (optimal_val < best):
-                        best = optimal_val
-                        src = col
-                        if best == float("-inf"):
-                            break
-        return (best,src)
-            
+                minimax_substate = self.minimax(child,plies-1)
+                minimax_val = minimax_substate["val"] * sign
+                if (minimax_val >= best["val"]):
+                    if minimax_val == best["val"] and minimax_substate["depth"] > best["depth"]:
+                        continue
+                    best = {"val":minimax_val,"src":col,"depth":minimax_substate["depth"]}      
+        best["val"] *= sign
+        return best
         
 
     class State:
@@ -59,7 +52,7 @@ class ComputerPlayer:
                 j = self.rack[col].index(0)
                 #Create new rack
                 new_rack = [tuple(col[:]) for col in self.rack]
-                new_col = list(self.rack[col][:])
+                new_col = list(new_rack[col][:])
                 new_col[j] = self.id
                 new_rack[col] = tuple(new_col)
                 new_rack = tuple(new_rack)
