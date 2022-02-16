@@ -40,12 +40,12 @@ class ComputerPlayer:
         
 
     class State:
-        def __init__(self, rack, id, value=None):
+        def __init__(self, rack, id):
             self.width = len(rack)
             self.height = len(rack[0])
             self.rack = rack
             self.id = id
-            self.value = self.evaluate_rack() if value is None else value
+            self.value = self.evaluate_rack()
 
         def make_move(self, col):
             if 0 <= col < self.width and self.rack[col][self.height-1] == 0:
@@ -56,10 +56,6 @@ class ComputerPlayer:
                 new_col[j] = self.id
                 new_rack[col] = tuple(new_col)
                 new_rack = tuple(new_rack)
-                #determine value
-                new_value = self.value
-                new_value -= self._explore(col,j,True)
-                new_value += self._explore(col,j,True,new_rack)
                 return ComputerPlayer.State(new_rack, (self.id%2)+1,new_value)
             return None
 
@@ -68,6 +64,8 @@ class ComputerPlayer:
             height = len(self.rack[0])
             #Explore +3 in 4 non-opposite directions from source (if possible).
             return  sum([self._explore(i,j) for i in range(width) for j in range(height)])
+
+        
                 
         def _explore(self, i, j, bi_directional=False, rack=None):   
             if rack is None:
