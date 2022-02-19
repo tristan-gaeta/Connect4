@@ -37,15 +37,14 @@ class ComputerPlayer:
                     best = {"val":minimax_val,"src":col,"depth":minimax_substate["depth"]}      
         best["val"] *= sign
         return best
-        
 
     class State:
-        def __init__(self, rack, id):
+        def __init__(self, rack, id, value=None):
             self.width = len(rack)
             self.height = len(rack[0])
             self.rack = rack
             self.id = id
-            self.value = self.evaluate_rack()
+            self.value = self.evaluate_rack() if value is None else value
 
         def make_move(self, col):
             if 0 <= col < self.width and self.rack[col][self.height-1] == 0:
@@ -56,49 +55,62 @@ class ComputerPlayer:
                 new_col[j] = self.id
                 new_rack[col] = tuple(new_col)
                 new_rack = tuple(new_rack)
+                #Last try
+                new_value = self.value
+                new_value -= self._all_quartets(col,j)
+                new_value += self._all_quartets(col,j,new_rack)
                 return ComputerPlayer.State(new_rack, (self.id%2)+1,new_value)
             return None
 
         def evaluate_rack(self):
             width = len(self.rack)
             height = len(self.rack[0])
-            #Explore +3 in 4 non-opposite directions from source (if possible).
-            return  sum([self._explore(i,j) for i in range(width) for j in range(height)])
+            #Explore +3 in 4 non-opposite directions from each source (if possible).
+            return sum([self._explore(i,j) for i in range(width) for j in range(height)])
 
-        
-                
-        def _explore(self, i, j, bi_directional=False, rack=None):   
+        def _quartet(self,i,j,x,y,rack=None):
             if rack is None:
                 rack = self.rack
-            width = len(rack)
-            height = len(rack[0])
-            value = 0
-            multipliers = [-1,1] if bi_directional else [1]
+            left = 3 if x == -1 else 0
+            right = len(rack) - 3 if x == 1 else len(rack)
+            bottom = 3 if y == -1 else 0
+            top = len(rack[0]) - 3 if y == 1 else len(rack[0])
+            if i < left or i >= right or j < bottom or j >= top:
+                return 0
+            id = 0
+            count = 0
+            for k in range(4):
+                token = rack[i + x*k][j + y*k]
+                if id == 0:
+                    id = token
+                if token != 0: 
+                    if id != token:
+                        return 0
+                    else:
+                        count += 1
+            if count == 0:
+                return 0 
+            multiplier = 1 if id == 1 else -1
+            if count < 4:
+                value = 10 ** (count-1)
+                return multiplier*value
+            else:
+                return multiplier*float("inf")
+
+        def _all_quartets(self,i,j,rack=None):
+            directions = [(x,y) for x in (-1,0,1) for y in (-1,0,1) if x != 0 or y != 0]
+            out = 0
+            for direction in directions:
+                x = direction[0]
+                y = direction[1]
+                out += self._quartet(i,j,x,y,rack)
+                out += self._quartet(i-x,j-y,x,y,rack)
+            return out
+                
+        def _explore(self,i, j):
+            out = 0
             for direction in [(-1,1),(0,1),(1,1),(1,0)]:
-                for multiplier in multipliers:
-                    x = direction[0] * multiplier
-                    y = direction[1] * multiplier
-                    #Check if valid quatret
-                    if (0 <= j + y*3 < height) and (0 <= i + x*3 < width):
-                        p1_tokens = 0
-                        p2_tokens = 0
-                        #Count tokens in quartet
-                        for k in range(4):
-                            token = rack[i + x*k][j + y*k]
-                            if token == 1:
-                                p1_tokens += 1
-                            elif token == 2:
-                                p2_tokens += 1
-                        if p1_tokens != 0 and p2_tokens != 0:
-                            continue    #No value
-                        elif p1_tokens != 0:
-                            if p1_tokens < 4:
-                                value += 10 ** (p1_tokens-1)
-                            else:
-                                return float("inf")
-                        elif p2_tokens != 0:
-                            if p2_tokens < 4:
-                                value -= 10 ** (p2_tokens-1)
-                            else:
-                                return float("-inf")
-            return value
+                x = direction[0]
+                y = direction[1]
+                out += self._quartet(i,j,x,y)
+            return out
