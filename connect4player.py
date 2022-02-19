@@ -10,15 +10,18 @@ class ComputerPlayer:
         ahead), and a player ID that's either 1 or 2 that tells the player what
         its number is.
         """
+        self.alpha_beta = True
         self.id = id
         self.difficulty_level = difficulty_level
 
     def pick_move(self, rack):
         state = ComputerPlayer.State(rack,self.id)
-        ans = self.minimax(state,self.difficulty_level)
+        alpha = float("-inf") if self.alpha_beta else None
+        beta = float("inf") if self.alpha_beta else None
+        ans = self.minimax(state,self.difficulty_level,alpha,beta)
         return ans["src"]
 
-    def minimax(self, state, plies):
+    def minimax(self, state, plies, alpha, beta):
         if plies == 0 or state.value == float("inf") or state.value == float("-inf"):
             if self.id != 1:
                 state.value *= -1
@@ -29,12 +32,22 @@ class ComputerPlayer:
         for col in range(state.width):
             child = state.make_move(col)
             if child is not None:
-                minimax_substate = self.minimax(child,plies-1)
+                minimax_substate = self.minimax(child,plies-1,alpha,beta)
                 minimax_val = minimax_substate["val"] * sign
                 if (minimax_val >= best["val"]):
                     if minimax_val == best["val"] and minimax_substate["depth"] > best["depth"]:
                         continue
-                    best = {"val":minimax_val,"src":col,"depth":minimax_substate["depth"]}      
+                    best = {"val":minimax_val,"src":col,"depth":minimax_substate["depth"]}    
+                #Alpha-Beta Pruning
+                if alpha is not None and beta is not None:
+                    if self.id == state.id: #max
+                        if minimax_substate["val"] > beta:
+                            break
+                        alpha = max(minimax_substate["val"],alpha)
+                    else:
+                        if minimax_substate["val"] < alpha:
+                            break
+                        beta = min(minimax_substate["val"],beta)  
         best["val"] *= sign
         return best
 
@@ -55,7 +68,7 @@ class ComputerPlayer:
                 new_col[j] = self.id
                 new_rack[col] = tuple(new_col)
                 new_rack = tuple(new_rack)
-                #Last try
+                #Update Value
                 new_value = self.value
                 new_value -= self._all_quartets(col,j)
                 new_value += self._all_quartets(col,j,new_rack)
